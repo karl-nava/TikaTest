@@ -2,38 +2,56 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.spi.FileTypeDetector;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
+import java.io.InputStream;
+
+import org.apache.tika.Tika;
+import org.apache.tika.mime.MimeTypes;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.pdf.PDFParser;
+import org.apache.tika.sax.BodyContentHandler;
+import org.apache.tika.sax.ToXMLContentHandler;
+import org.apache.tika.metadata.*;
+
+import org.apache.tika.exception.TikaException;
+import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.pdf.PDFParser;
 import org.apache.tika.sax.BodyContentHandler;
 
-import org.apache.tika.exception.TikaException;
-import org.apache.tika.metadata.Metadata;
-
 import org.json.simple.JSONObject;
 import org.xml.sax.SAXException;
+
+import java.io.StringWriter;
+
+import org.apache.solr.client.solrj.SolrClient;
+import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.common.SolrInputDocument;
 
 public class tikaParser {
-	public static void main(String args[]) throws IOException, SAXException, TikaException {
+	public static void main(String args[]) throws IOException, SAXException, TikaException, SolrServerException {
+		
+		//First input is the fileName with its location
+		//Second input is the location of solr
+		run(new String("C:\\Users\\Karl\\Desktop\\TestResume\\Resume.pdf"),new String("http://localhost:8983/solr/tset"));
+	}
+	
+	public static void run(String fileName, String solrLocation) throws IOException, SAXException, TikaException, SolrServerException{
 		//ToXMLContentHandler handler = new ToXMLContentHandler();
-    	//SolrClient client = new HttpSolrClient.Builder("http://localhost:8983/solr/tset").build();
+    	SolrClient client = new HttpSolrClient.Builder("http://localhost:8983/solr/tset").build();
     	 
     	BodyContentHandler  handler = new BodyContentHandler ();
     	 Metadata metadata = new Metadata();
-         File folder = new File("C:\\Users\\Karl\\Desktop\\PDFResume");
-         String folderName= "C:\\Users\\Karl\\Desktop\\PDFResume";
-         File[] files = folder.listFiles();
          
-         
-         FileWriter fileWriter = new FileWriter("Z:\\UTD\\EclipseJava\\TikaTest\\info.json");
          
          SolrInputDocument doc = new SolrInputDocument();
-         Scanner scan = new Scanner(System.in);
-         System.out.println("Please type filename + location:");
-	     FileInputStream inputstream = new FileInputStream(scan.next());
-	     scan.close();
+	     FileInputStream inputstream = new FileInputStream(fileName);
          System.out.println("");
 	     ParseContext pcontext = new ParseContext();
 	         
@@ -51,42 +69,34 @@ public class tikaParser {
 	    	 System.out.print("Empty JSON");
 	    	 return;
 	     }
-
-	     System.out.println("name: "+ obj.get("name"));
-	     System.out.println("location: "+ obj.get("location"));
-	     System.out.println("current_position: "+ obj.get("current_position"));
-	     System.out.println("summary: "+ obj.get("summary"));
-	     System.out.println("experience: "+ obj.get("experience"));
-	     System.out.println	("education: "+ obj.get("education"));
-	     System.out.println	("references: "+ obj.get("references"));
-	     System.out.println	("notes: "+ obj.get("notes"));
-	         
-
-	         
-	     /*for(String name : metadataNames) {
-	      	 obj.put(name,metadata.get(name));
-	      	 doc.addField(name, metadata.get(name));
-	       	 //System.out.println(name+ " : " + metadata.get(name));
-	     }*/
-	     /*StringWriter out = new StringWriter ();
-	     obj.writeJSONString(out);
-	         
-	     String jsonText = out.toString();
-	     System.out.print(jsonText);*/
 	     try {
-	    	 fileWriter.write(obj.toJSONString());
-	    	 fileWriter.write("\n");
+	    	 doc.addField("name:",obj.get("name"));
+	    	 
+		     doc.addField("location:", obj.get("location"));
+		     
+		     doc.addField("current_position:", obj.get("current_position"));
+		     if(obj.containsKey("summary"))
+		    	 doc.addField("summary:", obj.get("summary"));
+		     if(obj.containsKey("experience"))
+		    	 doc.addField("experience:", obj.get("experience"));
+		     if(obj.containsKey("education"))
+		    	 doc.addField("education:", obj.get("education"));
+		     if(obj.containsKey("reference"))
+		    	 doc.addField("references:", obj.get("references"));
+		     if(obj.containsKey("notes"))
+		    	 doc.addField("notes:", obj.get("notes"));
 	    	 //System.out.println(obj.toJSONString());
-	    	 //client.add(doc);
-	        	 
+		     
+	    	 client.add(doc);
+	    	 //System.out.println("Doc is printed");
 	     }
 	     catch (Exception e) {
-	         
+	    	 //System.out.println("Failed");
 	     }
 	     //System.out.println(obj);
-	     //client.commit();
-	     fileWriter.flush();
+	     client.commit();
 	}
+	
 	public static ArrayList<String> findPerson(String content) {
 		//Finds the person's name, location, and current position
 		ArrayList<String> output = new ArrayList<String>();
@@ -162,7 +172,9 @@ public class tikaParser {
 			if(found) {
 				if(nextLine.compareTo("")==0) {
 					if(paragraph.compareTo("")!=0) {
+						paragraph = paragraph.replaceAll("\n", " ");
 						output.add(paragraph);
+						paragraph = "";
 					}
 					continue;
 				}
@@ -245,6 +257,7 @@ public class tikaParser {
         //Gets the person's summary
         if(wordsInHandler.contains("Summary")) {
        	 String summary = findSummary(wordsInHandler);
+       	 summary = summary.replaceAll("\n", " ");
        	 obj.put("summary", summary);
         }
       //Gets the person's Experience
@@ -260,8 +273,9 @@ public class tikaParser {
 		}
 		
 		if(reference.contains("Profile Notes and Activity")) {
-			obj.put("references", reference.substring(0,reference.lastIndexOf("Profile Notes and Activity")));
+			obj.put("references", reference.substring(0,reference.lastIndexOf("Profile Notes and Activity")).replaceAll("\n"," "));
 			reference = reference.substring(reference.indexOf(")")+1);
+			reference = reference.replaceAll("\n", " ");
 			obj.put("notes", reference);
 		}
 		else 
