@@ -39,7 +39,7 @@ public class tikaParser {
 		
 		//First input is the fileName with its location
 		//Second input is the location of solr
-		run(new String("C:\\Users\\Karl\\Desktop\\TestResume\\Resume.pdf"),new String("http://localhost:8983/solr/tset"));
+		run(new String("C:\\Users\\Karl\\Desktop\\TestResume\\Resume4.pdf"),new String("http://localhost:8983/solr/tset"));
 	}
 	
 	public static void run(String fileName, String solrLocation) throws IOException, SAXException, TikaException, SolrServerException{
@@ -66,25 +66,25 @@ public class tikaParser {
 	     JSONObject obj = getJson(wordsInHandler);
 	     
 	     if(obj == null) {
-	    	 System.out.print("Empty JSON");
+	    	 //System.out.print("Empty JSON");
 	    	 return;
 	     }
 	     try {
-	    	 doc.addField("name:",obj.get("name"));
+	    	 doc.addField("name",obj.get("name"));
 	    	 
-		     doc.addField("location:", obj.get("location"));
+		     doc.addField("location", obj.get("location"));
 		     
-		     doc.addField("current_position:", obj.get("current_position"));
+		     doc.addField("current_position", obj.get("current_position"));
 		     if(obj.containsKey("summary"))
-		    	 doc.addField("summary:", obj.get("summary"));
+		    	 doc.addField("summary", obj.get("summary"));
 		     if(obj.containsKey("experience"))
-		    	 doc.addField("experience:", obj.get("experience"));
+		    	 doc.addField("experience", obj.get("experience"));
 		     if(obj.containsKey("education"))
-		    	 doc.addField("education:", obj.get("education"));
+		    	 doc.addField("education", obj.get("education"));
 		     if(obj.containsKey("reference"))
-		    	 doc.addField("references:", obj.get("references"));
+		    	 doc.addField("references", obj.get("references"));
 		     if(obj.containsKey("notes"))
-		    	 doc.addField("notes:", obj.get("notes"));
+		    	 doc.addField("notes", obj.get("notes"));
 	    	 //System.out.println(obj.toJSONString());
 		     
 	    	 client.add(doc);
